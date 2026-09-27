@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kanpur Food Finder — Data Collector</title>
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --text: #2a2420;
+    --muted: #7a6f63;
+    --border: #e8ddd0;
+    --accent: #d9622b;
+    --accent-dark: #b84f1f;
+    --accent-soft: #fbe6d8;
+    --success: #2e7d4f;
+    --danger: #c0392b;
+    --radius: 14px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1712;
+      --card: #262019;
+      --text: #f2ebe2;
+      --muted: #a99d8e;
+      --border: #3a3128;
+      --accent: #e8843f;
+      --accent-dark: #f2985a;
+      --accent-soft: #3a2a1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1712;
+    --card: #262019;
+    --text: #f2ebe2;
+    --muted: #a99d8e;
+    --border: #3a3128;
+    --accent: #e8843f;
+    --accent-dark: #f2985a;
+    --accent-soft: #3a2a1c;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 28px 18px 60px; }
+  header { text-align: center; margin-bottom: 24px; }
+  header .emoji { font-size: 40px; }
+  h1 { font-size: 1.5rem; margin: 6px 0 4px; font-weight: 700; }
+  header p { color: var(--muted); margin: 0; font-size: 0.92rem; }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .tabs {
+    flex: 1;
+    display: flex; gap: 8px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px;
+  }
+  .icon-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { background: var(--accent-soft); }
+  .tab {
+    flex: 1; text-align: center; padding: 10px 8px; border-radius: 999px; cursor: default;
+    font-weight: 600; font-size: 0.88rem; color: var(--muted); user-select: none;
+    transition: background .15s, color .15s;
+  }
+  .tab.active { background: var(--accent); color: #fff; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 14px 0 6px; color: var(--text); }
+  label .hint { font-weight: 400; color: var(--muted); font-size: 0.78rem; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.95rem; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .chip {
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg);
+    font-size: 0.82rem; cursor: pointer; user-select: none; color: var(--muted);
+  }
+  .chip.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); font-weight: 600; }
+
+  .btn {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--accent);
+    color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 20px;
+  }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 10px; }
+  .btn.small { width: auto; padding: 10px 16px; margin-top: 8px; font-size: 0.85rem; }
+
+  .msg { text-align: center; font-size: 0.85rem; margin-top: 10px; min-height: 18px; }
+  .msg.success { color: var(--success); }
+  .msg.error { color: var(--danger); }
+
+  .location-box {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 8px;
+    background: var(--bg);
+  }
+  .location-status { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+  .location-status.ok { color: var(--success); font-weight: 600; }
+  .location-status.err { color: var(--danger); font-weight: 600; }
+
+  .dish-row {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .dish-row .dish-num {
+    font-size: 0.78rem;
+    color: var(--muted);
+    grid-column: 1 / -1;
+    margin-top: 6px;
+  }
+
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filters select, .filters input { flex: 1; min-width: 120px; }
+
+  .place { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .place-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .place-name { font-weight: 700; font-size: 1.05rem; }
+  .place-area { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  .place-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { background: var(--accent-soft); color: var(--accent-dark); padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .dish-list { margin-top: 10px; }
+  .dish-list-item { display: flex; justify-content: space-between; font-size: 0.88rem; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .dish-list-item:last-child { border-bottom: none; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; font-size: 0.9rem; }
+  .count-pill { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 14px; }
+</style>
+<!-- ================================================================
+     FIREBASE SETUP — paste the config you got from the Firebase
+     console (Step 3 of the setup guide) into the object below.
+     ================================================================ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBcstL5PBRiGcPKE_Cd56P2uhSiwZsp9bk",
+    authDomain: "kanpur-food-finder.firebaseapp.com",
+    projectId: "kanpur-food-finder",
+    storageBucket: "kanpur-food-finder.firebasestorage.app",
+    messagingSenderId: "395171474057",
+    appId: "1:395171474057:web:d5fc010a19546b181d3458"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const firestore = getFirestore(app);
+
+  // Expose a tiny wrapper on window so the rest of the page's plain
+  // <script> (below) can use it without needing to be a module itself.
+  window.__firebase = { firestore, collection, addDoc, serverTimestamp };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="emoji">🍛</div>
+    <h1>Kanpur Food Finder</h1>
+    <p>Collect real data on local food places — everything saves right here</p>
+  </header>
+
+  <div class="top-bar">
+    <div class="tabs">
+      <div class="tab active">➕ Add New Entry</div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="tab-form">
+    <div class="card">
+      <label>Place name *</label>
+      <input type="text" id="f-name" placeholder="e.g. Shukla Chaat Bhandar" />
+
+      <label>Are you at this place right now? *</label>
+      <div class="chips" id="f-presence">
+        <div class="chip" data-val="here">Yes, I'm here</div>
+        <div class="chip" data-val="not-here">No, adding from memory</div>
+      </div>
+
+      <div class="location-box" id="location-box-here" style="display:none;">
+        <button class="btn small" id="capture-location-btn" type="button">📍 Capture my current location</button>
+        <div class="location-status" id="location-status"></div>
+      </div>
+
+      <div id="location-box-manual" style="display:none;">
+        <label>Type the address / area / landmark <span class="hint">(no map search available — please be as specific as you can)</span></label>
+        <input type="text" id="f-manual-address" placeholder="e.g. Near Phool Bagh, Mall Road, Kanpur" />
+      </div>
+
+      <label>Category *</label>
+      <select id="f-category">
+        <option value="">-- Select --</option>
+        <option>Chai / Tapri</option>
+        <option>Chaat / Street Food</option>
+        <option>Dhaba</option>
+        <option>Restaurant</option>
+        <option>Cafe</option>
+        <option>Sweet Shop</option>
+        <option>Bakery</option>
+        <option>Fast Food</option>
+        <option>Other</option>
+      </select>
+
+      <label>Veg / Non-veg</label>
+      <div class="chips" id="f-vegtype">
+        <div class="chip" data-val="Veg">Veg</div>
+        <div class="chip" data-val="Non-veg">Non-veg</div>
+        <div class="chip" data-val="Both">Both</div>
+      </div>
+
+      <label>How many dishes did you try here? *</label>
+      <input type="number" id="f-dish-count" min="1" max="20" placeholder="e.g. 3" />
+
+      <div id="dish-fields"></div>
+
+      <label>Ambience <span class="hint">(select all that fit)</span></label>
+      <div class="chips" id="f-ambience">
+        <div class="chip" data-val="Street-side">Street-side</div>
+        <div class="chip" data-val="Sit-down">Sit-down</div>
+        <div class="chip" data-val="AC">AC</div>
+        <div class="chip" data-val="Family-friendly">Family-friendly</div>
+        <div class="chip" data-val="Group-friendly">Group-friendly</div>
+        <div class="chip" data-val="Romantic">Romantic</div>
+        <div class="chip" data-val="Outdoor">Outdoor</div>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Timing <span class="hint">(optional)</span></label>
+          <input type="text" id="f-timing" placeholder="e.g. 10am - 10pm" />
+        </div>
+        <div>
+          <label>Your name <span class="hint">(optional)</span></label>
+          <input type="text" id="f-addedby" placeholder="e.g. Rahul" />
+        </div>
+      </div>
+
+      <label>Extra notes <span class="hint">(optional)</span></label>
+      <textarea id="f-notes" placeholder="Anything else worth mentioning..."></textarea>
+
+      <button class="btn" id="submit-btn">Save Entry</button>
+      <div class="msg" id="form-msg"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let capturedLocation = null; // {lat, lng}
+const CATEGORIES = ["Chai / Tapri","Chaat / Street Food","Dhaba","Restaurant","Cafe","Sweet Shop","Bakery","Fast Food","Other"];
+
+// ---- Chip helpers ----
+function setupSingleSelectChips(containerId, onChange) {
+  const el = document.getElementById(containerId);
+  el.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const alreadySelected = chip.classList.contains('selected');
+      el.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      if (!alreadySelected) chip.classList.add('selected');
+      if (onChange) onChange(alreadySelected ? '' : chip.dataset.val);
+    });
+  });
+}
+function setupMultiSelectChips(containerId) {
+  const el = document.getElementById(containerId);
+  el.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+  });
+}
+function getSingleSelected(containerId) {
+  const sel = document.getElementById(containerId).querySelector('.chip.selected');
+  return sel ? sel.dataset.val : '';
+}
+function getMultiSelected(containerId) {
+  return [...document.getElementById(containerId).querySelectorAll('.chip.selected')].map(c => c.dataset.val);
+}
+
+setupSingleSelectChips('f-vegtype');
+setupMultiSelectChips('f-ambience');
+
+// ---- Presence (here / not-here) toggle ----
+setupSingleSelectChips('f-presence', (val) => {
+  document.getElementById('location-box-here').style.display = val === 'here' ? 'block' : 'none';
+  document.getElementById('location-box-manual').style.display = val === 'not-here' ? 'block' : 'none';
+  if (val !== 'here') {
+    capturedLocation = null;
+    document.getElementById('location-status').textContent = '';
+  }
+});
+
+// ---- Geolocation capture ----
+document.getElementById('capture-location-btn').addEventListener('click', () => {
+  const statusEl = document.getElementById('location-status');
+  if (!navigator.geolocation) {
+    statusEl.textContent = 'Geolocation is not supported on this device.';
+    statusEl.className = 'location-status err';
+    return;
+  }
+  statusEl.textContent = 'Getting your location...';
+  statusEl.className = 'location-status';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      capturedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      statusEl.textContent = `✅ Location captured (${capturedLocation.lat.toFixed(5)}, ${capturedLocation.lng.toFixed(5)})`;
+      statusEl.className = 'location-status ok';
+    },
+    (err) => {
+      statusEl.textContent = '❌ Could not get location. Please allow location access, or switch to "adding from memory".';
+      statusEl.className = 'location-status err';
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+// ---- Dynamic dish + price fields ----
+document.getElementById('f-dish-count').addEventListener('input', renderDishFields);
+function renderDishFields() {
+  const count = parseInt(document.getElementById('f-dish-count').value, 10);
+  const container = document.getElementById('dish-fields');
+  container.innerHTML = '';
+  if (!count || count < 1) return;
+  const capped = Math.min(count, 20);
+  for (let i = 1; i <= capped; i++) {
+    const row = document.createElement('div');
+    row.innerHTML = `
+      <div class="dish-num">Dish ${i}</div>
+      <div class="dish-row">
+        <input type="text" class="dish-name-input" placeholder="Dish name (e.g. Tikki Chaat)" />
+        <input type="text" class="dish-price-input" placeholder="₹ Price" />
+      </div>
+    `;
+    container.appendChild(row);
+  }
+}
+
+// ---- Init Firebase ----
+let fb = null;
+function init() {
+  fb = window.__firebase || null;
+  if (!fb) {
+    document.getElementById('form-msg').textContent = '⚠️ Firebase is not connected. Check your firebaseConfig.';
+    document.getElementById('form-msg').className = 'msg error';
+    return;
+  }
+  subscribeToPlaces();
+}
+
+function subscribeToPlaces() {
+  // Live list is optional in this deployment; skipped by default since
+  // the UI to view it isn't shown. Data is still safely stored in Firestore
+  // and can be viewed anytime in the Firebase console under Firestore Database.
+}
+
+// ---- Submit form ----
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const msg = document.getElementById('form-msg');
+  const name = document.getElementById('f-name').value.trim();
+  const presence = getSingleSelected('f-presence');
+  const category = document.getElementById('f-category').value;
+  const vegType = getSingleSelected('f-vegtype');
+  const ambience = getMultiSelected('f-ambience');
+  const timing = document.getElementById('f-timing').value.trim();
+  const addedBy = document.getElementById('f-addedby').value.trim();
+  const notes = document.getElementById('f-notes').value.trim();
+  const manualAddress = document.getElementById('f-manual-address').value.trim();
+
+  const dishNameInputs = [...document.querySelectorAll('.dish-name-input')];
+  const dishPriceInputs = [...document.querySelectorAll('.dish-price-input')];
+  const dishes = dishNameInputs.map((inp, i) => ({
+    name: inp.value.trim(),
+    price: dishPriceInputs[i].value.trim()
+  })).filter(d => d.name);
+
+  if (!name || !presence || !category) {
+    msg.textContent = 'Please fill place name, presence, and category (* fields).';
+    msg.className = 'msg error';
+    return;
+  }
+  if (presence === 'here' && !capturedLocation) {
+    msg.textContent = 'Please capture your current location, or switch to "adding from memory".';
+    msg.className = 'msg error';
+    return;
+  }
+  if (presence === 'not-here' && !manualAddress) {
+    msg.textContent = 'Please type the address/landmark for this place.';
+    msg.className = 'msg error';
+    return;
+  }
+  if (dishes.length === 0) {
+    msg.textContent = 'Please add at least one dish with its name.';
+    msg.className = 'msg error';
+    return;
+  }
+  if (!fb) {
+    msg.textContent = 'Firebase is not connected right now.';
+    msg.className = 'msg error';
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    await fb.addDoc(fb.collection(fb.firestore, 'places'), {
+      name, category,
+      vegType: vegType || null,
+      dishes,
+      ambience,
+      timing: timing || null,
+      addedBy: addedBy || null,
+      notes: notes || null,
+      location: presence === 'here' ? capturedLocation : null,
+      addressText: presence === 'not-here' ? manualAddress : null,
+      locationSource: presence,
+      createdAt: fb.serverTimestamp()
+    });
+    msg.textContent = '✅ Entry saved! Thank you.';
+    msg.className = 'msg success';
+    // reset form
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-category').value = '';
+    document.getElementById('f-timing').value = '';
+    document.getElementById('f-addedby').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('f-manual-address').value = '';
+    document.getElementById('f-dish-count').value = '';
+    document.getElementById('dish-fields').innerHTML = '';
+    document.getElementById('location-status').textContent = '';
+    document.getElementById('location-box-here').style.display = 'none';
+    document.getElementById('location-box-manual').style.display = 'none';
+    capturedLocation = null;
+    document.querySelectorAll('#f-vegtype .chip, #f-ambience .chip, #f-presence .chip').forEach(c => c.classList.remove('selected'));
+  } catch (e) {
+    msg.textContent = '❌ Could not save. Please try again.';
+    msg.className = 'msg error';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Entry';
+  }
+});
+
+if (window.__firebase) {
+  init();
+} else {
+  window.addEventListener('firebase-ready', init);
+}
+</script>
+</body>
+</html>
